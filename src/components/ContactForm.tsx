@@ -1,0 +1,433 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { PROJECT_TYPES } from '../data/portfolioData';
+import { Inquiry } from '../types';
+import { CheckCircle2, ChevronRight, FileCheck, HelpCircle, RefreshCw, Send, Sparkles, MessageCircle, LogIn } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+
+// Studio WhatsApp contact (India, +91). Shown once a client has shared an idea.
+const WHATSAPP_NUMBER = '917397075166';
+const WHATSAPP_LINK = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
+  "Hi! I just submitted a project idea on KRAFT // WEB and would like to discuss it."
+)}`;
+
+interface ContactFormProps {
+  selectedPresetService: string;
+  onInquirySubmitted: () => void;
+}
+
+export function ContactForm({ selectedPresetService, onInquirySubmitted }: ContactFormProps) {
+  const { user } = useAuth();
+
+  // Form fields
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [company, setCompany] = useState('');
+  const [projectType, setProjectType] = useState('');
+  const [budget] = useState('Not specified');
+  const [timeline] = useState('Not specified');
+  const [details, setDetails] = useState('');
+
+  // UI state
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submissionReceipt, setSubmissionReceipt] = useState<string | null>(null);
+  const [hasSharedIdea, setHasSharedIdea] = useState(false);
+
+  // Prefill the profile from the logged-in account and check prior submissions.
+  useEffect(() => {
+    if (user) {
+      setName(user.name);
+      setEmail(user.email);
+      try {
+        const stored = localStorage.getItem('inquiries');
+        const all: Inquiry[] = stored ? JSON.parse(stored) : [];
+        setHasSharedIdea(all.some((inq) => inq.ownerEmail?.toLowerCase() === user.email.toLowerCase()));
+      } catch {
+        setHasSharedIdea(false);
+      }
+    }
+  }, [user]);
+
+  // Automatically update the selected project type if the user chose a service card from above
+  useEffect(() => {
+    if (selectedPresetService) {
+      // Attempt to match with listed categories
+      const foundType = PROJECT_TYPES.find(t => 
+        t.toLowerCase().includes(selectedPresetService.toLowerCase()) || 
+        selectedPresetService.toLowerCase().includes(t.toLowerCase())
+      );
+      if (foundType) {
+        setProjectType(foundType);
+      } else {
+        // Fallback or custom
+        setProjectType(selectedPresetService);
+      }
+    }
+  }, [selectedPresetService]);
+
+  const validateForm = () => {
+    const tempErrors: Record<string, string> = {};
+    if (!name.trim()) tempErrors.name = 'Full name is required';
+    
+    if (!email.trim()) {
+      tempErrors.email = 'Email address is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      tempErrors.email = 'Please provide a valid email format';
+    }
+
+    if (!details.trim()) {
+      tempErrors.details = 'Project specs or brief is required';
+    } else if (details.trim().length < 15) {
+      tempErrors.details = 'Please tell us slightly more detail (minimum 15 characters)';
+    }
+
+    setErrors(tempErrors);
+    return Object.keys(tempErrors).length === 0;
+  };
+
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateForm()) return;
+
+    setIsSubmitting(true);
+
+    setTimeout(() => {
+      // Read current localStorage array first to assign a sequential project token
+      let existingInquiries: Inquiry[] = [];
+      try {
+        const storedStr = localStorage.getItem('inquiries');
+        if (storedStr) {
+          existingInquiries = JSON.parse(storedStr);
+        }
+      } catch (err) {
+        console.error('Error reading prior inquiries', err);
+      }
+
+      // Assign the next sequential project token (PROJ-1, PROJ-2, PROJ-3, ...)
+      const maxProjNum = existingInquiries.reduce((max, inq) => {
+        const match = /PROJ-(\d+)/.exec(inq.id);
+        return match ? Math.max(max, parseInt(match[1], 10)) : max;
+      }, 0);
+      const projectId = 'PROJ-' + (maxProjNum + 1);
+
+      const newInquiry: Inquiry = {
+        id: projectId,
+        name: name.trim(),
+        email: email.trim(),
+        company: company.trim() || undefined,
+        projectType,
+        budget,
+        timeline,
+        details: details.trim(),
+        timestamp: new Date().toISOString(),
+        read: false,
+        accepted: false,
+        ownerEmail: user?.email
+      };
+
+      // Add to array and save
+      existingInquiries.push(newInquiry);
+      localStorage.setItem('inquiries', JSON.stringify(existingInquiries));
+
+      // Reset only the project-specific fields (keep the signed-in profile).
+      setCompany('');
+      setDetails('');
+      setProjectType('');
+
+      setIsSubmitting(false);
+      setSubmissionReceipt(projectId);
+      setHasSharedIdea(true);
+      onInquirySubmitted(); // Notify parent state to increment badges
+    }, 1200); // Realistic slight submission timeout for premium feel
+  };
+
+  return (
+    <section id="contact-section" className="py-24 px-6 bg-[#F8F9FA] border-t border-slate-200">
+      <div className="max-w-7xl mx-auto">
+        
+        {/* Section Header */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-16">
+          <div className="max-w-2xl">
+            <span className="font-mono text-[10px] text-slate-400 uppercase tracking-widest block mb-3">
+              [ 03 / PROJECT ESTIMATE PLANNER ]
+            </span>
+            <h2 className="font-display font-light text-3xl md:text-5xl tracking-tight text-slate-950">
+              Co-produce your design blueprint.
+            </h2>
+
+            {/* WhatsApp quick-chat — appears once the client has shared an idea */}
+            {user && hasSharedIdea && (
+              <a
+                href={WHATSAPP_LINK}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-5 inline-flex items-center gap-2 rounded-full bg-[#25D366] hover:bg-[#1ebe5b] text-white h-11 px-5 font-mono text-[10px] tracking-widest uppercase font-semibold transition-all hover:gap-3 shadow-sm"
+                id="whatsapp-chat-btn"
+              >
+                <MessageCircle className="w-4 h-4" /> Chat on WhatsApp
+              </a>
+            )}
+          </div>
+          <p className="font-sans text-slate-500 max-w-sm text-sm md:text-base leading-relaxed font-light">
+            Fill in the details below to generate a tailored specification. Your project draft will build directly and instantly submit to our development inbox.
+          </p>
+        </div>
+
+        {/* Login gate — visitors must sign in before sharing an idea */}
+        {!user ? (
+          <div className="bg-white border border-slate-200 rounded-md shadow-xs p-12 text-center flex flex-col items-center gap-5 max-w-xl mx-auto">
+            <div className="w-14 h-14 rounded-full bg-slate-950 flex items-center justify-center text-white">
+              <LogIn className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="font-sans font-semibold text-xl text-slate-950 tracking-tight">Log in to share your idea</h3>
+              <p className="text-slate-500 text-sm font-light mt-2 max-w-sm mx-auto leading-relaxed">
+                Create a free account or sign in first. Your project ideas are saved to your dashboard so you can track their progress.
+              </p>
+            </div>
+            <a
+              href="#login"
+              className="rounded-full bg-black text-white h-12 px-7 flex items-center justify-center gap-2 font-mono text-[10px] tracking-widest uppercase hover:bg-slate-900 transition-all cursor-pointer"
+            >
+              <LogIn className="w-4 h-4" /> Log in to continue
+            </a>
+          </div>
+        ) : (
+        /* Form Container Split */
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start" id="planner-form-holder">
+          
+          {/* LEFT SIDE: Interactive Form Slots - 7 Columns */}
+          <div className="lg:col-span-7 bg-white border border-slate-200 p-8 rounded-md shadow-xs">
+            
+            <AnimatePresence mode="wait">
+              {!submissionReceipt ? (
+                <motion.form 
+                  key="form-fields"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onSubmit={handleFormSubmit} 
+                  className="space-y-8"
+                >
+                  
+                  {/* Step 1: Basic Personals */}
+                  <div className="space-y-6">
+                    <h3 className="font-mono text-[10px] uppercase tracking-widest text-slate-900 border-b border-slate-100 pb-2">
+                      01 / Client Profile
+                    </h3>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="flex flex-col gap-1.5">
+                        <label className="font-mono text-[9px] text-slate-400 uppercase tracking-wider" htmlFor="client-name">Your Full Name *</label>
+                        <input
+                          id="client-name"
+                          type="text"
+                          placeholder="e.g. Sarah Connor"
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                          className={`h-11 px-4 border text-sm rounded bg-[#F8F9FA]/40 focus:bg-white transition-colors focus:border-slate-950 focus:outline-none ${
+                            errors.name ? 'border-red-500' : 'border-slate-200'
+                          }`}
+                        />
+                        {errors.name && <span className="text-[10px] text-red-500 font-mono mt-1">{errors.name}</span>}
+                      </div>
+
+                      <div className="flex flex-col gap-1.5">
+                        <label className="font-mono text-[9px] text-slate-400 uppercase tracking-wider" htmlFor="client-email">Email Address *</label>
+                        <input
+                          id="client-email"
+                          type="email"
+                          placeholder="e.g. sarah@example.com"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          className={`h-11 px-4 border text-sm rounded bg-[#F8F9FA]/40 focus:bg-white transition-colors focus:border-slate-955 focus:outline-none ${
+                            errors.email ? 'border-red-500' : 'border-slate-200'
+                          }`}
+                        />
+                        {errors.email && <span className="text-[10px] text-red-500 font-mono mt-1">{errors.email}</span>}
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <label className="font-mono text-[9px] text-slate-400 uppercase tracking-wider" htmlFor="client-company">Company or Product Name (Optional)</label>
+                      <input
+                        id="client-company"
+                        type="text"
+                        placeholder="e.g. Cyberdyne Labs"
+                        value={company}
+                        onChange={(e) => setCompany(e.target.value)}
+                        className="h-11 px-4 border border-slate-200 text-sm rounded bg-[#F8F9FA]/40 focus:bg-white focus:border-slate-950 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Step 2: System Specs Selection */}
+                  <div className="space-y-6">
+                    <h3 className="font-mono text-[10px] uppercase tracking-widest text-[#0f172a] border-b border-slate-100 pb-2">
+                      02 / System & Structure Scope
+                    </h3>
+                    
+                    <div className="flex flex-col gap-1.5">
+                      <label className="font-mono text-[9px] text-slate-400 uppercase tracking-wider" htmlFor="architecture-type">Describe Your Architecture</label>
+                      <textarea
+                        id="architecture-type"
+                        rows={3}
+                        placeholder="e.g. A marketing landing page with a blog, or a React-based SaaS dashboard with user accounts..."
+                        value={projectType}
+                        onChange={(e) => setProjectType(e.target.value)}
+                        className="p-4 border border-slate-200 text-sm rounded bg-[#F8F9FA]/40 focus:bg-white transition-colors focus:border-slate-950 focus:outline-none resize-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Step 4: Notes Summary */}
+                  <div className="space-y-6">
+                    <h3 className="font-mono text-[10px] font-semibold uppercase tracking-widest text-slate-900 border-b border-slate-100 pb-2">
+                      04 / Custom Specs & Specifications
+                    </h3>
+                    
+                    <div className="flex flex-col gap-1.5">
+                      <label className="font-mono text-[9px] text-slate-400 uppercase tracking-wider" htmlFor="project-details">Project Details / Brief (Target Audience, Pages needed, design inspiration) *</label>
+                      <textarea
+                        id="project-details"
+                        rows={5}
+                        placeholder="e.g. Please describe your service, main objectives, list reference websites you love, or describe core animations wanted..."
+                        value={details}
+                        onChange={(e) => setDetails(e.target.value)}
+                        className={`p-4 border text-sm rounded bg-[#F8F9FA]/60 focus:bg-white transition-colors focus:border-slate-950 focus:outline-none resize-none ${
+                          errors.details ? 'border-red-500' : 'border-slate-200'
+                        }`}
+                      />
+                      {errors.details && <span className="text-[10px] text-red-500 font-mono mt-1">{errors.details}</span>}
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="w-full flex items-center justify-center gap-3 rounded-md bg-black h-14 text-white text-xs font-mono tracking-widest uppercase transition-all hover:bg-slate-900 disabled:opacity-50 cursor-pointer"
+                    id="submit-engineer-brief-btn"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin" /> COMPILING DESIGN SPECIFICATION...
+                      </>
+                    ) : (
+                      <>
+                        TRANSMIT SECURE SPECS <Send className="w-3.5 h-3.5" />
+                      </>
+                    )}
+                  </button>
+
+                </motion.form>
+              ) : (
+                <motion.div 
+                  key="form-success"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="py-12 text-center flex flex-col items-center gap-6"
+                >
+                  <div className="w-16 h-16 rounded-full bg-slate-50 inline-flex items-center justify-center text-slate-900 border border-slate-200">
+                    <CheckCircle2 className="w-8 h-8 text-[#10b981]" />
+                  </div>
+                  
+                  <div>
+                    <h3 className="font-sans font-semibold text-2xl text-slate-950 tracking-tight leading-none mb-2">
+                      Inquiry Logged Successfully
+                    </h3>
+                    <p className="text-slate-500 text-sm max-w-sm mx-auto font-light leading-relaxed">
+                      Your business blueprint was signed into the database and allocated onto our master slot buffer.
+                    </p>
+                  </div>
+
+                  <div className="p-5 bg-slate-50 rounded border border-slate-200/60 w-full max-w-sm text-center">
+                    <span className="font-mono text-[9px] uppercase tracking-widest text-slate-400 block">SPECIFICATION ID RECEIPT</span>
+                    <span className="font-mono font-bold text-base text-slate-900 select-all block mt-1 tracking-wider">
+                      {submissionReceipt}
+                    </span>
+                    <span className="font-mono text-[10px] text-[#10b981] font-semibold block mt-3">
+                      [ Availability slot locked temporarily ]
+                    </span>
+                  </div>
+
+                  <button
+                    onClick={() => setSubmissionReceipt(null)}
+                    className="mt-4 flex items-center gap-2 font-mono text-xs text-slate-500 hover:text-black font-semibold border-b border-slate-350 pb-0.5 cursor-pointer"
+                    id="submit-another-brief-btn"
+                  >
+                    Log another system blueprint
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+          </div>
+
+          {/* RIGHT SIDE: Dynamic Draft Output - 5 Columns */}
+          <div className="lg:col-span-5 flex flex-col gap-4">
+            
+            <div className="bg-slate-950 text-slate-300 rounded p-6 font-mono text-xs border border-slate-900 flex flex-col h-full justify-between" id="dynamic-summary-draft-box">
+              
+              {/* Header */}
+              <div className="border-b border-slate-900 pb-4 mb-4 flex items-center justify-between">
+                <span className="text-slate-500 tracking-wider font-semibold uppercase">[ LIVE COMPILER ]</span>
+                <span className="flex h-1.5 w-1.5 rounded-full bg-[#10b981] animate-pulse" />
+              </div>
+
+              {/* Specs Stack */}
+              <div className="space-y-4 flex-1">
+                <div>
+                  <span className="text-slate-600 uppercase tracking-widest block font-semibold text-[9px] mb-1">CLIENT PROFILE:</span>
+                  <div className="text-[#F8F9FA] text-[11px] leading-relaxed">
+                    {name.trim() ? name.trim() : <span className="text-slate-700 italic">No name provided</span>}
+                    {email.trim() && <span> &lt;{email.trim()}&gt;</span>}
+                    {company.trim() && <span className="text-slate-500 font-normal"> at {company.trim()}</span>}
+                  </div>
+                </div>
+
+                <div>
+                  <span className="text-slate-600 uppercase tracking-widest block font-semibold text-[9px] mb-1">DESCRIBED ARCHITECTURE:</span>
+                  <div className="text-slate-300 text-[11px] font-semibold flex items-start gap-1">
+                    <FileCheck className="w-3.5 h-3.5 text-slate-500 mt-0.5 shrink-0" />
+                    {projectType.trim() ? projectType.trim() : <span className="text-slate-700 italic font-normal">No architecture described yet</span>}
+                  </div>
+                </div>
+
+                <div>
+                  <span className="text-slate-600 uppercase tracking-widest block font-semibold text-[9px] mb-1">PROJECT DETAILS:</span>
+                  <div className="text-slate-400 text-[10.5px] leading-relaxed break-words font-light">
+                    {details.trim() ? (
+                      details.length > 220 ? `${details.substring(0, 220)}...` : details
+                    ) : (
+                      <span className="text-slate-700 italic">Insert project scope notes left to compile...</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Bottom tag */}
+              <div className="border-t border-slate-900 pt-4 mt-6 flex items-center gap-2">
+                <Sparkles className="w-3.5 h-3.5 text-slate-500" />
+                <span className="text-[10px] text-slate-600 leading-none">
+                  KRAFT Architecture Engine v4.1 (Standard Caching)
+                </span>
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+        )}
+
+      </div>
+    </section>
+  );
+}

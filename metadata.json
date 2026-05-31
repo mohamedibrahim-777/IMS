@@ -1,0 +1,6 @@
+{
+  "name": "Web Services Portfolio",
+  "description": "A minimalist, high-performance web development and design portfolio featuring services and an interactive contact planner.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
