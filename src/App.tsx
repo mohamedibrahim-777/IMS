@@ -93,29 +93,32 @@ export default function App() {
     handleSectionChange('contact');
   };
 
-  // Login / sign-up pages (reachable from the header "Login" button).
+  // Determine the top-level view from the hash route (crossfaded between each other).
+  let view: React.ReactNode;
+  let viewKey: string;
+
   if (route === '#login' || route === '#signup') {
     // Already signed in? Send them to the right dashboard instead.
-    if (user) return user.role === 'admin' ? <AdminGate unreadCount={unreadCount} onInquiryCountChange={calculateUnreadCount} /> : <UserDashboard />;
-    return <LoginPage />;
-  }
-
-  // Logged-in user's personal dashboard.
-  if (route === '#dashboard') {
-    return user ? <UserDashboard /> : <LoginPage />;
-  }
-
-  // Admin dashboard route — gated by auth role inside AdminGate (admins only).
-  if (route === '#admin') {
-    return (
-      <AdminGate
-        unreadCount={unreadCount}
-        onInquiryCountChange={calculateUnreadCount}
-      />
-    );
-  }
-
-  return (
+    if (user) {
+      view = user.role === 'admin'
+        ? <AdminGate unreadCount={unreadCount} onInquiryCountChange={calculateUnreadCount} />
+        : <UserDashboard />;
+      viewKey = user.role === 'admin' ? 'admin' : 'dashboard';
+    } else {
+      view = <LoginPage />;
+      viewKey = 'login';
+    }
+  } else if (route === '#dashboard') {
+    // Logged-in user's personal dashboard.
+    view = user ? <UserDashboard /> : <LoginPage />;
+    viewKey = user ? 'dashboard' : 'login';
+  } else if (route === '#admin') {
+    // Admin dashboard — gated by auth role inside AdminGate (admins only).
+    view = <AdminGate unreadCount={unreadCount} onInquiryCountChange={calculateUnreadCount} />;
+    viewKey = 'admin';
+  } else {
+    viewKey = 'home';
+    view = (
     <div className="bg-[#F8F9FA] text-slate-900 min-h-screen selection:bg-black selection:text-white font-sans antialiased">
 
       {/* Dynamic Header Navbar */}
@@ -237,5 +240,20 @@ export default function App() {
       </footer>
 
     </div>
+    );
+  }
+
+  return (
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={viewKey}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.3, ease: 'easeInOut' }}
+      >
+        {view}
+      </motion.div>
+    </AnimatePresence>
   );
 }
