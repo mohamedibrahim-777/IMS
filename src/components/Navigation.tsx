@@ -31,10 +31,17 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
   const navItems: { id: string; label: string; badge?: number }[] = [
     { id: 'services', label: 'Services' },
     { id: 'portfolio', label: 'Portfolio' },
+    { id: 'about', label: 'About' },
     { id: 'contact', label: 'Start Project' },
   ];
 
   const handleNavClick = (id: string) => {
+    // "About" is its own page (hash route); everything else scrolls the home page.
+    if (id === 'about') {
+      window.location.hash = '#about';
+      setIsOpen(false);
+      return;
+    }
     onSectionChange(id);
     setIsOpen(false);
   };
@@ -59,14 +66,6 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
             <span className="font-display font-medium text-base tracking-tight block">KRAFT // WEB</span>
           </div>
         </button>
-
-        {/* Live availability badge - direct extract from reference design HTML */}
-        <div className="hidden lg:block">
-          <span className="inline-flex items-center gap-1.5 text-[9px] tracking-widest uppercase px-3 py-1 border border-slate-300 rounded-full text-slate-500 font-bold bg-[#F8F9FA]">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            ● Available for Projects
-          </span>
-        </div>
 
         {/* Desktop Navigation */}
         <div className="hidden md:flex items-center gap-8">
@@ -100,9 +99,18 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
             );
           })}
 
-          {/* Auth controls */}
+          {/* Estimate Project CTA */}
+          <button
+            onClick={() => handleNavClick('contact')}
+            className="flex items-center gap-2 rounded-full bg-black h-10 px-5 text-white hover:bg-slate-900 font-mono text-[10px] tracking-widest uppercase transition-all hover:gap-3 cursor-pointer"
+            id="nav-cta"
+          >
+            Estimate Project <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+
+          {/* Auth controls — placed after the Estimate Project button */}
           {user ? (
-            <div className="flex items-center gap-4 pl-2 border-l border-slate-200">
+            <div className="flex items-center gap-4 pl-3 border-l border-slate-200">
               <button
                 onClick={() => goTo(isAdmin ? '#admin' : '#dashboard')}
                 className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-slate-500 hover:text-black transition-colors cursor-pointer"
@@ -122,20 +130,12 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
           ) : (
             <button
               onClick={() => goTo('#login')}
-              className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-slate-500 hover:text-black transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 pl-3 border-l border-slate-200 font-mono text-[10px] uppercase tracking-widest text-slate-500 hover:text-black transition-colors cursor-pointer"
               id="nav-login"
             >
               <LogIn className="w-3.5 h-3.5" /> Login
             </button>
           )}
-
-          <button
-            onClick={() => handleNavClick('contact')}
-            className="ml-2 flex items-center gap-2 rounded-full bg-black h-10 px-5 text-white hover:bg-slate-900 font-mono text-[10px] tracking-widest uppercase transition-all hover:gap-3 cursor-pointer"
-            id="nav-cta"
-          >
-            Estimate Project <ArrowRight className="w-3.5 h-3.5" />
-          </button>
         </div>
 
         {/* Mobile Nav Toggle */}

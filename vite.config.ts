@@ -6,6 +6,8 @@ import {defineConfig} from 'vite';
 export default defineConfig(() => {
   return {
     plugins: [react(), tailwindcss()],
+    // Treat .glb 3D models as static assets (used by the Lanyard component).
+    assetsInclude: ['**/*.glb'],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),

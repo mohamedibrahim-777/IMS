@@ -6,6 +6,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { ArrowDownRight, Globe, Shield, Zap, MonitorSmartphone } from 'lucide-react';
+import MagicRings from './MagicRings';
 
 interface HeroProps {
   onSectionChange: (section: string) => void;
@@ -14,6 +15,33 @@ interface HeroProps {
 export function Hero({ onSectionChange }: HeroProps) {
   return (
     <section className="relative min-h-screen pt-32 pb-20 px-6 flex flex-col justify-between overflow-hidden bg-[#F8F9FA]">
+      {/* Animated WebGL magic-rings background */}
+      <div className="absolute inset-0 z-0 pointer-events-none [mask-image:radial-gradient(ellipse_72%_72%_at_50%_45%,#000_52%,transparent_88%)]">
+        <MagicRings
+          color="#A855F7"
+          colorTwo="#6366F1"
+          ringCount={6}
+          speed={1}
+          attenuation={10}
+          lineThickness={2}
+          baseRadius={0.35}
+          radiusStep={0.1}
+          scaleRate={0.1}
+          opacity={1}
+          blur={0}
+          noiseAmount={0.02}
+          rotation={0}
+          ringGap={1.5}
+          fadeIn={0.7}
+          fadeOut={0.5}
+          followMouse={false}
+          mouseInfluence={0.2}
+          hoverScale={1.2}
+          parallax={0.05}
+          clickBurst={false}
+        />
+      </div>
+
       {/* Decorative clean grid patterns (Minimalist aesthetic) */}
       <div className="absolute inset-x-0 top-0 h-96 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-30" pointer-events-none="true" />
 

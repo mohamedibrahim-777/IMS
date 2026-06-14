@@ -3,17 +3,22 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Navigation } from './components/Navigation';
 import { Hero } from './components/Hero';
 import { Services } from './components/Services';
 import { Portfolio } from './components/Portfolio';
 import { ContactForm } from './components/ContactForm';
+import { Showcase } from './components/Showcase';
 import { AdminGate } from './components/AdminGate';
 import { LoginPage } from './components/LoginPage';
 import { UserDashboard } from './components/UserDashboard';
 import { useAuth } from './context/AuthContext';
+
+// Lazy-loaded so the heavy 3D libraries (three/R3F/drei/rapier) only download
+// when a visitor actually opens the About page — keeps the rest of the site fast.
+const AboutUs = lazy(() => import('./components/AboutUs').then((m) => ({ default: m.AboutUs })));
 import { Inquiry } from './types';
 import { Layers, Mail, Terminal, Clock, Star, Monitor, ShieldCheck, Heart } from 'lucide-react';
 
@@ -116,6 +121,14 @@ export default function App() {
     // Admin dashboard — gated by auth role inside AdminGate (admins only).
     view = <AdminGate unreadCount={unreadCount} onInquiryCountChange={calculateUnreadCount} />;
     viewKey = 'admin';
+  } else if (route === '#about') {
+    // About Us page (features the interactive 3D lanyard) — lazy-loaded.
+    view = (
+      <Suspense fallback={<div className="min-h-screen bg-[#F8F9FA]" />}>
+        <AboutUs />
+      </Suspense>
+    );
+    viewKey = 'about';
   } else {
     viewKey = 'home';
     view = (
@@ -138,6 +151,11 @@ export default function App() {
         {/* SERVICES SECTION */}
         <div id="services-section">
           <Services onSelectService={handleServiceSelect} />
+        </div>
+
+        {/* WHY US / CARD SWAP SHOWCASE SECTION */}
+        <div id="showcase-section">
+          <Showcase />
         </div>
 
         {/* PORTFOLIO SHOWCASE GALLERY SECTION */}
@@ -185,6 +203,11 @@ export default function App() {
                 <li>
                   <button onClick={() => handleSectionChange('portfolio')} className="hover:text-stone-200 transition-colors cursor-pointer">
                     Portfolio Gallery
+                  </button>
+                </li>
+                <li>
+                  <button onClick={() => { window.location.hash = '#about'; }} className="hover:text-stone-200 transition-colors cursor-pointer">
+                    About Us
                   </button>
                 </li>
                 <li>
